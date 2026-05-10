@@ -1,4 +1,4 @@
-from src.pipefy.middleware import middleware
+from pipefy.middleware import middleware
 
 class ValidationMiddleware(middleware.Middleware):
   events = (

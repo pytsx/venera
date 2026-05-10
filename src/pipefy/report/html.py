@@ -1,8 +1,8 @@
-from src.pipefy.sdk.html.page import HTMLPage
-from src.pipefy.sdk.html.ui import UI
-from src.pipefy.sdk.html.themes.default import default_theme
+from pipefy.sdk.html.page import HTMLPage
+from pipefy.sdk.html.ui import UI
+from pipefy.sdk.html.themes.default import default_theme
 
-from src.pipefy.report import report
+from pipefy.report import report
 
 
 def to_html(res: report.PipelineReport, page: HTMLPage):

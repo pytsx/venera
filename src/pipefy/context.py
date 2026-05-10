@@ -3,9 +3,9 @@ from typing import Any
 import polars as pl 
 from typing import Callable
 
-from src.pipefy.sdk import logger
+from pipefy.sdk import logger
 
-from ... import error
+from error import ErrorDecision
 
 df_readers: dict[str, Callable[[Path], pl.DataFrame]] = {
   ".xlsx": pl.read_excel,
@@ -56,16 +56,16 @@ class ErrorContext:
     return self._ctx.has(key)
 
   def abort(self, reason: str | None = None):
-    return error.ErrorDecision("abort", reason or str(self.error))
+    return ErrorDecision("abort", reason or str(self.error))
 
   def retry(self, max_retries: int = 1, reason: str | None = None):
-    return error.ErrorDecision("retry", reason or str(self.error), max_retries)
+    return ErrorDecision("retry", reason or str(self.error), max_retries)
 
   def continue_(self, reason: str | None = None):
-    return error.ErrorDecision("continue", reason or str(self.error))
+    return ErrorDecision("continue", reason or str(self.error))
 
   def skip(self, reason: str | None = None):
-    return error.ErrorDecision("skip", reason or str(self.error))
+    return ErrorDecision("skip", reason or str(self.error))
   
   def is_(self, error_type: type[Exception]) -> bool:
     return isinstance(self.error, error_type)

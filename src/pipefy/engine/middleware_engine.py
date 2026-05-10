@@ -1,4 +1,4 @@
-from src.pipefy.middleware import middleware
+from pipefy.middleware import middleware
 
 class MiddlewareEngine:
   def __init__(self, *mw: middleware.Middleware):

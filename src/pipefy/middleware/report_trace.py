@@ -1,8 +1,8 @@
 from datetime import datetime
 from time import perf_counter
 
-from src.pipefy.middleware import middleware
-from src.pipefy.sdk import reference
+from pipefy.middleware import middleware
+from pipefy.sdk import reference
 
 class ReportTraceMiddleware(middleware.Middleware):
   events = (

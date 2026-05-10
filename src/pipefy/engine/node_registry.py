@@ -1,7 +1,7 @@
 from typing import Self
 
-from src.pipefy.node import Node
-from src.pipefy.engine.middleware_engine import MiddlewareEngine
+from pipefy.node import Node
+from pipefy.engine.middleware_engine import MiddlewareEngine
 
 class NodeRegistry:
   def __init__(self, middleware: MiddlewareEngine):

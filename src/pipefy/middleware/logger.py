@@ -1,5 +1,5 @@
-from src.pipefy.sdk import reference
-from src.pipefy.middleware import middleware
+from pipefy.sdk import reference
+from pipefy.middleware import middleware
 
 class LoggerMiddleware(middleware.Middleware):
   events = (

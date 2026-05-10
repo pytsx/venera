@@ -1,3 +1,3 @@
-from src.pipefy.sdk import reference
-from src.pipefy.sdk import save
-from src.pipefy.sdk import logger
+from pipefy.sdk.reference import getReference
+from pipefy.sdk.save import saveHTML, saveJson
+from pipefy.sdk.logger import Logger 

@@ -1,9 +1,9 @@
 from abc import ABC
 from typing import Callable, Literal
 
-from src.pipefy.context import Context
-from src.pipefy.node import Node
-from src.pipefy.report import report
+from pipefy.context import Context
+from pipefy.node import Node
+from pipefy.report import report
 
 MiddlewareEvent = Literal[
   "onPush",

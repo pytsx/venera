@@ -1,8 +1,8 @@
-from src.pipefy.context import Context
-from src.pipefy.node import Node
-from src.pipefy.report import report
-from src.pipefy.engine.step_runner import StepRunner
-from src.pipefy.engine.middleware_engine import MiddlewareEngine
+from pipefy.context import Context
+from pipefy.node import Node
+from pipefy.report import report
+from pipefy.engine.step_runner import StepRunner
+from pipefy.engine.middleware_engine import MiddlewareEngine
 
 
 class NodeRunner:

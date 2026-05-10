@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-from src.pipefy.report import report
+from pipefy.report import report
 
 @dataclass
 class PipelineErrorReport:

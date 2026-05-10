@@ -1,11 +1,11 @@
 from typing import Callable
 
-from src.pipefy.context import Context, ErrorContext
-from src.pipefy.error import ErrorDecision
-from src.pipefy.report import report
-from src.pipefy.engine.decision_engine import DecisionEngine
-from src.pipefy.engine.middleware_engine import MiddlewareEngine
-from src.pipefy.sdk import reference
+from pipefy.context import Context, ErrorContext
+from pipefy.error import ErrorDecision
+from pipefy.report import report
+from pipefy.engine.decision_engine import DecisionEngine
+from pipefy.engine.middleware_engine import MiddlewareEngine
+from pipefy.sdk import reference
 
 
 class StepRunner:

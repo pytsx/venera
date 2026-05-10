@@ -1,19 +1,19 @@
 
 from typing import Self
 
-from src.pipefy.context import Context
-from src.pipefy.node import Node
-from src.pipefy.report import report
+from pipefy.context import Context
+from pipefy.node import Node
+from pipefy.report import report
 
-from src.pipefy.middleware import middleware
-from src.pipefy.middleware import (
+from pipefy.middleware import middleware
+from pipefy.middleware import (
   ReportTraceMiddleware,
   ValidationMiddleware,
   ErrorReportMiddleware,
   LoggerMiddleware,
 )
 
-from src.pipefy.engine import (
+from pipefy.engine import (
  NodeRunner,
  StepRunner,
  DecisionEngine,
@@ -21,7 +21,7 @@ from src.pipefy.engine import (
  MiddlewareEngine,
 )
 
-from src.pipefy.sdk import logger
+from pipefy.sdk import logger
 
 class Pipeline:
   def __init__(self, log: logger.Logger, *mw: middleware.Middleware):

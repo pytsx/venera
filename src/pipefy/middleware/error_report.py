@@ -1,6 +1,6 @@
-from src.pipefy.report import report
-from src.pipefy.sdk import reference
-from src.pipefy.middleware import middleware
+from pipefy.report import report
+from pipefy.sdk import reference
+from pipefy.middleware import middleware
 import traceback 
 
 class ErrorReportMiddleware(middleware.Middleware):

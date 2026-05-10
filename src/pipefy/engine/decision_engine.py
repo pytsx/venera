@@ -1,9 +1,9 @@
 from typing import Callable
 
-from src.pipefy.context import Context
-from src.pipefy.error import ErrorDecision
-from src.pipefy.report import report
-from src.pipefy.engine.middleware_engine import MiddlewareEngine
+from pipefy.context import Context
+from pipefy.error import ErrorDecision
+from pipefy.report import report
+from pipefy.engine.middleware_engine import MiddlewareEngine
 
 class DecisionEngine:
   def __init__(self, middleware: MiddlewareEngine):
