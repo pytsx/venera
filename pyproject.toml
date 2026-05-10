@@ -1,6 +1,6 @@
 [project]
 name = "pipefy"
-version = "0.1.4"
+version = "0.1.5"
 description = "A lightweight pipeline framework with validation, middleware, logging and reports."
 readme = "README.md"
 requires-python = ">=3.10"
