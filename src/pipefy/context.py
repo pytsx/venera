@@ -5,7 +5,7 @@ from typing import Callable
 
 from pipefy.sdk import logger
 
-from error import ErrorDecision
+from pipefy.error import ErrorDecision
 
 df_readers: dict[str, Callable[[Path], pl.DataFrame]] = {
   ".xlsx": pl.read_excel,
