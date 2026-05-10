@@ -1,9 +1,9 @@
 from typing import Callable
 
-from pipefy.context import Context
-from pipefy.error import ErrorDecision
-from pipefy.report import report
-from pipefy.engine.middleware_engine import MiddlewareEngine
+from ..context import Context
+from ..error import ErrorDecision
+from ..report import PipelineStepReport, PipelineNodeReport, PipelineRetryReport
+from ..engine.middleware_engine import MiddlewareEngine
 
 class DecisionEngine:
   def __init__(self, middleware: MiddlewareEngine):
@@ -11,8 +11,8 @@ class DecisionEngine:
 
   def finish_step(
     self,
-    step_report: report.PipelineStepReport,
-    node_report: report.PipelineNodeReport,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
     success: bool,
     fixed: bool | None = None,
   ) -> bool:
@@ -30,8 +30,8 @@ class DecisionEngine:
     ctx: Context,
     action: Callable[[Context], None],
     decision: ErrorDecision,
-    step_report: report.PipelineStepReport,
-    node_report: report.PipelineNodeReport,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
   ) -> bool:
     step_report.decision = decision.action
     step_report.decision_reason = decision.reason
@@ -67,7 +67,7 @@ class DecisionEngine:
     max_retries = decision.max_retries or 1
 
     for attempt in range(1, max_retries + 1):
-      retry_report = report.PipelineRetryReport(
+      retry_report = PipelineRetryReport(
         attempt=attempt,
         success=True,
       )

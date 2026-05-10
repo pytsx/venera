@@ -1,12 +1,12 @@
 from typing import Callable
 
-from pipefy.context import Context, ErrorContext
-from pipefy.error import ErrorDecision
-from pipefy.report import report
-from pipefy.engine.decision_engine import DecisionEngine
-from pipefy.engine.middleware_engine import MiddlewareEngine
-from pipefy.sdk import reference
+from ..context import Context, ErrorContext
+from ..error import ErrorDecision
+from ..report import PipelineNodeReport, PipelineStepReport
+from ..sdk import reference
 
+from .decision_engine import DecisionEngine
+from .middleware_engine import MiddlewareEngine
 
 class StepRunner:
   def __init__(
@@ -23,9 +23,9 @@ class StepRunner:
     name: str,
     action: Callable[[Context], None],
     error_handler: Callable[[ErrorContext], ErrorDecision],
-    node_report: report.PipelineNodeReport,
+    node_report: PipelineNodeReport,
   ) -> bool:
-    step_report = report.PipelineStepReport(
+    step_report = PipelineStepReport(
       name=name,
       reference=reference.getReference(action),
       success=True,

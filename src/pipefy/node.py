@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
-from pipefy.error import ErrorDecision
+from .error import ErrorDecision
 
-from pipefy.context import Context, ErrorContext
-from pipefy.sdk import reference
+from .context import Context, ErrorContext
+from .sdk import reference
 
 class Node(ABC):
   inputs: tuple[str, ...] = ()

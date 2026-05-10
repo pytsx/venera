@@ -1,19 +1,19 @@
 
 from typing import Self
 
-from pipefy.context import Context
-from pipefy.node import Node
-from pipefy.report import report
+from .context import Context
+from .node import Node
+from .report import PipelineErrorReport, PipelineNodeReport, PipelineReport, PipelineRetryReport, PipelineStepReport
 
-from pipefy.middleware import middleware
-from pipefy.middleware import (
+from .middleware import middleware
+from .middleware import (
   ReportTraceMiddleware,
   ValidationMiddleware,
   ErrorReportMiddleware,
   LoggerMiddleware,
 )
 
-from pipefy.engine import (
+from .engine import (
  NodeRunner,
  StepRunner,
  DecisionEngine,
@@ -21,7 +21,7 @@ from pipefy.engine import (
  MiddlewareEngine,
 )
 
-from pipefy.sdk import logger
+from .sdk import logger
 
 class Pipeline:
   def __init__(self, log: logger.Logger, *mw: middleware.Middleware):
@@ -44,17 +44,17 @@ class Pipeline:
     self.registry.push(n)
     return self
 
-  def run(self) -> report.PipelineReport:
+  def run(self) -> PipelineReport:
     ctx = Context(self.log)
 
-    pipeline_report = report.PipelineReport(
+    pipeline_report = PipelineReport(
       nodes_total=len(self.registry.nodes),
     )
 
     self.middleware.emit("beforeRunPipeline", ctx, pipeline_report)
 
     for current_node in self.registry.nodes:
-      node_report = report.PipelineNodeReport(node_id=current_node.id)
+      node_report = PipelineNodeReport(node_id=current_node.id)
       pipeline_report.nodes.append(node_report)
 
       if not self.nodes.run(ctx, current_node, node_report):

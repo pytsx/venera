@@ -2,12 +2,12 @@ import logging
 
 import pytest
 
-from pipefy.context import Context, ErrorContext
-from pipefy.node import Node
-from pipefy.pipeline import Pipeline
-from pipefy.error import ErrorDecision
+from .context import Context, ErrorContext
+from .node import Node
+from .pipeline import Pipeline
+from .error import ErrorDecision
 
-from pipefy.sdk import logger
+from .sdk import logger
 
 
 class NoopLogger(logger.Logger):

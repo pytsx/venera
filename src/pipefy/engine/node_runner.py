@@ -1,8 +1,8 @@
-from pipefy.context import Context
-from pipefy.node import Node
-from pipefy.report import report
-from pipefy.engine.step_runner import StepRunner
-from pipefy.engine.middleware_engine import MiddlewareEngine
+from ..context import Context
+from ..node import Node
+from ..report import PipelineNodeReport
+from .step_runner import StepRunner
+from .middleware_engine import MiddlewareEngine
 
 
 class NodeRunner:
@@ -18,7 +18,7 @@ class NodeRunner:
     self,
     ctx: Context,
     current_node: Node,
-    node_report: report.PipelineNodeReport,
+    node_report: PipelineNodeReport,
   ) -> bool:
     self.middleware.emit("beforeRunNode", ctx, node_report, current_node)
 

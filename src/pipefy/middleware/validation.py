@@ -1,6 +1,6 @@
-from pipefy.middleware import middleware
+from .middleware import Middleware
 
-class ValidationMiddleware(middleware.Middleware):
+class ValidationMiddleware(Middleware):
   events = (
     "beforeRunNode",
     "validateInputs",

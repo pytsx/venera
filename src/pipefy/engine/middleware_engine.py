@@ -1,11 +1,11 @@
-from pipefy.middleware import middleware
+from ..middleware.middleware import Middleware, MiddlewareEvent
 
 class MiddlewareEngine:
-  def __init__(self, *mw: middleware.Middleware):
+  def __init__(self, *mw: Middleware):
     self.middlewares = mw
-    self.listeners: dict[str, list[middleware.Middleware]] = self._index_middlewares(self.middlewares)
+    self.listeners: dict[str, list[Middleware]] = self._index_middlewares(self.middlewares)
 
-  def _index_middlewares(self, middlewares: tuple[middleware.Middleware, ...]):
+  def _index_middlewares(self, middlewares: tuple[Middleware, ...]):
     listeners = {}
 
     for mw in middlewares:
@@ -14,11 +14,11 @@ class MiddlewareEngine:
 
     return listeners
 
-  def emit(self, hook: middleware.MiddlewareEvent, *args) -> None:
+  def emit(self, hook: MiddlewareEvent, *args) -> None:
     for mw in self._listeners(hook):
       getattr(mw, hook)(*args)
 
-  def every(self, hook: middleware.MiddlewareEvent, *args) -> bool:
+  def every(self, hook: MiddlewareEvent, *args) -> bool:
     for mw in self._listeners(hook):
       result = getattr(mw, hook)(*args)
 
@@ -27,7 +27,7 @@ class MiddlewareEngine:
 
     return True
 
-  def emit_transform(self, hook: middleware.MiddlewareEvent, value):
+  def emit_transform(self, hook: MiddlewareEvent, value):
     result = value
 
     for mw in self._listeners(hook):
@@ -38,5 +38,5 @@ class MiddlewareEngine:
 
     return result
 
-  def _listeners(self, hook: middleware.MiddlewareEvent):
+  def _listeners(self, hook: MiddlewareEvent):
     return self.listeners.get(hook, ())

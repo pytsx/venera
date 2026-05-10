@@ -1,4 +1,4 @@
-from pipefy.sdk.html.page import HTMLPage
+from ...sdk.html.page import HTMLPage
 
 class UIBase:
   def __init__(self, page: HTMLPage):

@@ -1,4 +1,4 @@
-from pipefy.sdk.html.theme import (
+from ....sdk.html.theme import (
   Theme,
   ThemeStyle,
   HeadingTheme,

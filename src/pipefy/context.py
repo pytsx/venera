@@ -3,9 +3,9 @@ from typing import Any
 import polars as pl 
 from typing import Callable
 
-from pipefy.sdk import logger
+from .sdk import logger
 
-from pipefy.error import ErrorDecision
+from .error import ErrorDecision
 
 df_readers: dict[str, Callable[[Path], pl.DataFrame]] = {
   ".xlsx": pl.read_excel,

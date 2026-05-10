@@ -1,17 +1,17 @@
-from pipefy.report import report
-from pipefy.sdk import reference
-from pipefy.middleware import middleware
+from ..report import PipelineErrorReport
+from ..sdk import getReference
+from .middleware import Middleware
 import traceback 
 
-class ErrorReportMiddleware(middleware.Middleware):
+class ErrorReportMiddleware(Middleware):
   events = (
     "onStepError",
     "onRetryError",
   )
-  def build_error_report(self, err: Exception) -> report.PipelineErrorReport:
+  def build_error_report(self, err: Exception) -> PipelineErrorReport:
     cause = err.__cause__ or err.__context__
 
-    return report.PipelineErrorReport(
+    return PipelineErrorReport(
       type=type(err).__name__,
       message=str(err),
       traceback="".join(
@@ -24,7 +24,7 @@ class ErrorReportMiddleware(middleware.Middleware):
   def onStepError(self, ctx, r, err, error_handler):
     r.success = False
     r.error = self.build_error_report(err)
-    r.handler_reference = reference.getReference(error_handler)
+    r.handler_reference = getReference(error_handler)
 
   def onRetryError(self, ctx, r, err, attempt, max_retries, action):
     r.success = False

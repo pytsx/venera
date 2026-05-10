@@ -1,9 +1,9 @@
 from abc import ABC
 from typing import Callable, Literal
 
-from pipefy.context import Context
-from pipefy.node import Node
-from pipefy.report import report
+from ..context import Context
+from ..node import Node
+from ..report import  PipelineNodeReport, PipelineReport, PipelineRetryReport, PipelineStepReport
 
 MiddlewareEvent = Literal[
   "onPush",
@@ -44,39 +44,39 @@ class Middleware(ABC):
   def onPush(self, n: Node) -> Node:
     return n
 
-  def beforeRunPipeline(self, ctx: Context, r: report.PipelineReport) -> None:
+  def beforeRunPipeline(self, ctx: Context, r: PipelineReport) -> None:
     pass
 
-  def afterRunPipeline(self, ctx: Context, r: report.PipelineReport) -> None:
+  def afterRunPipeline(self, ctx: Context, r: PipelineReport) -> None:
     pass
 
-  def beforeRunNode(self, ctx: Context, r: report.PipelineNodeReport, n: Node) -> None:
+  def beforeRunNode(self, ctx: Context, r: PipelineNodeReport, n: Node) -> None:
     pass
 
-  def afterRunNode(self, ctx: Context, r: report.PipelineNodeReport, n: Node) -> None:
+  def afterRunNode(self, ctx: Context, r: PipelineNodeReport, n: Node) -> None:
     pass
 
-  def beforeRunStep(self, ctx: Context, r: report.PipelineStepReport, name: str, action: Callable) -> None:
+  def beforeRunStep(self, ctx: Context, r: PipelineStepReport, name: str, action: Callable) -> None:
     pass
 
-  def afterRunStep(self, ctx: Context, r: report.PipelineStepReport, name: str, action: Callable) -> None:
+  def afterRunStep(self, ctx: Context, r: PipelineStepReport, name: str, action: Callable) -> None:
     pass
 
-  def onStepError(self, ctx: Context, r: report.PipelineStepReport, err: Exception, error_handler: Callable) -> None:
+  def onStepError(self, ctx: Context, r: PipelineStepReport, err: Exception, error_handler: Callable) -> None:
     pass
 
-  def validateInputs(self, ctx: Context, n: Node, r: report.PipelineNodeReport) -> bool:
+  def validateInputs(self, ctx: Context, n: Node, r: PipelineNodeReport) -> bool:
     return True
 
-  def validateOutputs(self, ctx: Context, n: Node, r: report.PipelineNodeReport, prev_keys: set[str]) -> bool:
+  def validateOutputs(self, ctx: Context, n: Node, r: PipelineNodeReport, prev_keys: set[str]) -> bool:
     return True
 
-  def beforeRetry(self, ctx: Context, r: report.PipelineRetryReport, attempt: int, max_retries: int, action: Callable) -> None:
+  def beforeRetry(self, ctx: Context, r: PipelineRetryReport, attempt: int, max_retries: int, action: Callable) -> None:
     pass
 
-  def afterRetry(self, ctx: Context, r: report.PipelineRetryReport, attempt: int, max_retries: int, action: Callable) -> None:
+  def afterRetry(self, ctx: Context, r: PipelineRetryReport, attempt: int, max_retries: int, action: Callable) -> None:
     pass
 
-  def onRetryError(self, ctx: Context, r: report.PipelineRetryReport, err: Exception, attempt: int, max_retries: int, action: Callable) -> None:
+  def onRetryError(self, ctx: Context, r: PipelineRetryReport, err: Exception, attempt: int, max_retries: int, action: Callable) -> None:
     pass
 

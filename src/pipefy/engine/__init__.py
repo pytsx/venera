@@ -1,6 +1,6 @@
 
-from pipefy.engine.middleware_engine import MiddlewareEngine
-from pipefy.engine.node_registry import NodeRegistry
-from pipefy.engine.decision_engine import DecisionEngine
-from pipefy.engine.step_runner import StepRunner
-from pipefy.engine.node_runner import NodeRunner
+from .middleware_engine import MiddlewareEngine
+from .node_registry import NodeRegistry
+from .decision_engine import DecisionEngine
+from .step_runner import StepRunner
+from .node_runner import NodeRunner

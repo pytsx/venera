@@ -1,10 +1,10 @@
 from datetime import datetime
 from time import perf_counter
 
-from pipefy.middleware import middleware
-from pipefy.sdk import reference
+from .middleware import Middleware
+from ..sdk import getReference
 
-class ReportTraceMiddleware(middleware.Middleware):
+class ReportTraceMiddleware(Middleware):
   events = (
     "beforeRunPipeline",
     "afterRunPipeline",
@@ -57,7 +57,7 @@ class ReportTraceMiddleware(middleware.Middleware):
   def beforeRunStep(self, ctx, r, name, action):
     self.step_start[id(r)] = perf_counter()
     r.started_at = self.now_iso()
-    r.reference = reference.getReference(action)
+    r.reference = getReference(action)
 
   def afterRunStep(self, ctx, r, name, action):
     r.ended_at = self.now_iso()

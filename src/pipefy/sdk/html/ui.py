@@ -1,8 +1,8 @@
 from typing import Literal
 
-from pipefy.sdk.html.page import HTMLPage
-from pipefy.sdk.html.theme import Theme, ThemeStyle, VariantTheme
-from pipefy.sdk.html.ui_base import UIBase
+from ...sdk.html.page import HTMLPage
+from ...sdk.html.theme import Theme, ThemeStyle, VariantTheme
+from ...sdk.html.ui_base import UIBase
 
 Variant = Literal["default", "success", "error", "warning", "info"]
 

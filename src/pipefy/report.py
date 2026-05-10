@@ -1,11 +1,107 @@
-from pipefy.sdk.html.page import HTMLPage
-from pipefy.sdk.html.ui import UI
-from pipefy.sdk.html.themes.default import default_theme
+from dataclasses import dataclass, field, asdict
 
-from pipefy.report import report
+from .sdk.html.ui import UI, HTMLPage
+from .sdk.html.themes.default import default_theme
+
+@dataclass
+class PipelineErrorReport:
+  type: str
+  message: str
+  traceback: str | None = None
+  cause_type: str | None = None
+  cause_message: str | None = None
 
 
-def to_html(res: report.PipelineReport, page: HTMLPage):
+@dataclass
+class PipelineRetryReport:
+  attempt: int
+  success: bool
+  error: PipelineErrorReport | None = None
+  duration_ms: float | None = None
+
+@dataclass
+class PipelineStepReport:
+  name: str
+  reference: str
+  success: bool
+
+  started_at: str | None = None
+  ended_at: str | None = None
+  duration_ms: float | None = None
+
+  error: PipelineErrorReport | None = None
+
+  handler_reference: str | None = None
+  decision: str | None = None
+  decision_reason: str | None = None
+  fixed: bool | None = None
+
+  retries: list[PipelineRetryReport] = field(default_factory=list)
+
+  def to_dict(self) -> dict:
+    return asdict(self)
+
+
+@dataclass
+class PipelineNodeReport:
+  node_id: str
+  success: bool = True
+
+  started_at: str | None = None
+  ended_at: str | None = None
+  duration_ms: float | None = None
+
+  inputs_declared: list[str] = field(default_factory=list)
+  outputs_declared: list[str] = field(default_factory=list)
+
+  context_keys_before: list[str] = field(default_factory=list)
+  context_keys_after: list[str] = field(default_factory=list)
+
+  missing_inputs: list[str] = field(default_factory=list)
+  missing_outputs: list[str] = field(default_factory=list)
+  undeclared_outputs: list[str] = field(default_factory=list)
+
+  steps: list[PipelineStepReport] = field(default_factory=list)
+
+  undeclared_inputs: list[str] = field(default_factory=list)
+
+  def to_dict(self) -> dict:
+    return asdict(self)
+
+
+@dataclass
+class PipelineReport:
+  success: bool = True
+
+  started_at: str | None = None
+  ended_at: str | None = None
+  duration_ms: float | None = None
+
+  nodes_total: int = 0
+  nodes_success: int = 0
+  nodes_failed: int = 0
+
+  nodes: list[PipelineNodeReport] = field(default_factory=list)
+
+  @property
+  def failed_node(self) -> PipelineNodeReport | None:
+    for node in self.nodes:
+      if not node.success:
+        return node
+    return None
+
+  def to_dict(self) -> dict:
+    return asdict(self)
+
+  def to_html(self) -> str:
+    html_tag = to_html(self, HTMLPage())
+    return html_tag.mount()
+  
+
+
+
+
+def to_html(res: PipelineReport, page: HTMLPage):
   ui = UI(page, default_theme)
 
   return ui.app(
@@ -15,7 +111,7 @@ def to_html(res: report.PipelineReport, page: HTMLPage):
   )
 
 
-def _summary_to_html(res: report.PipelineReport, ui: UI):
+def _summary_to_html(res: PipelineReport, ui: UI):
   return ui.card(
     ui.row(
       ui.field("Status geral", ""),
@@ -35,7 +131,7 @@ def _summary_to_html(res: report.PipelineReport, ui: UI):
   )
 
 
-def _pipeline_node_to_html(node: report.PipelineNodeReport, ui: UI):
+def _pipeline_node_to_html(node: PipelineNodeReport, ui: UI):
   return ui.card(
     ui.row(
       ui.heading(f"Node: {node.node_id}", level=2),
@@ -68,7 +164,7 @@ def _pipeline_node_to_html(node: report.PipelineNodeReport, ui: UI):
   )
 
 
-def _pipeline_step_to_html(step: report.PipelineStepReport, ui: UI):
+def _pipeline_step_to_html(step: PipelineStepReport, ui: UI):
   children = [
     ui.row(
       ui.heading(step.name, level=4),
@@ -109,7 +205,7 @@ def _pipeline_step_to_html(step: report.PipelineStepReport, ui: UI):
   return ui.card(*children, variant=_card_variant(step.success))
 
 
-def _error_to_html(err: report.PipelineErrorReport, ui: UI):
+def _error_to_html(err: PipelineErrorReport, ui: UI):
   children = [
     ui.heading("Erro", level=5),
     ui.field("Tipo", err.type),
@@ -127,7 +223,7 @@ def _error_to_html(err: report.PipelineErrorReport, ui: UI):
   return ui.box(*children, variant="error")
 
 
-def _retry_to_html(retry: report.PipelineRetryReport, ui: UI):
+def _retry_to_html(retry: PipelineRetryReport, ui: UI):
   children = [
     ui.row(
       ui.field("Tentativa", retry.attempt),
