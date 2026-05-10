@@ -1,18 +1,9 @@
-from pathlib import Path 
 from typing import Any
-import polars as pl 
-from typing import Callable
 
 from .sdk import logger
 
 from .error import ErrorDecision
 
-df_readers: dict[str, Callable[[Path], pl.DataFrame]] = {
-  ".xlsx": pl.read_excel,
-  ".xls": pl.read_excel,
-  ".csv": pl.read_csv,
-  ".parquet": pl.read_parquet,
-}
 
 class Context:
   def __init__(self, log: logger.Logger):
