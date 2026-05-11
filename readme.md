@@ -1,524 +1,258 @@
-# Pipeline Framework
+# Venera: documentação e caso de uso
 
-Framework orientado a execução de pipelines com rastreabilidade, validação, middleware, tratamento de erro e geração de relatórios HTML/JSON.
+`venera` é um framework leve para construir pipelines em Python com etapas desacopladas, validação de contratos, tratamento de erros, middlewares, logs e relatórios de execução.
 
-O objetivo do projeto é fornecer uma estrutura simples para construir fluxos ETL/processamento em etapas desacopladas chamadas **Nodes**, com:
-
-* Contexto compartilhado
-* Contratos explícitos de entrada/saída
-* Middleware extensível
-* Tratamento de erro declarativo
-* Retry automático
-* Logs estruturados
-* Relatórios detalhados de execução
+Esta documentação descreve os principais conceitos do pacote e apresenta um caso de uso completo de processamento de pedidos.
 
 ---
 
-# Visão Geral da Arquitetura
+## Quando usar
 
-O fluxo principal do framework é:
+Use `venera` quando você precisa organizar um fluxo em etapas sequenciais e rastreáveis, por exemplo:
 
-```text
-Pipeline
- ├── NodeRegistry
- ├── MiddlewareEngine
- ├── NodeRunner
- │    └── StepRunner
- │         └── DecisionEngine
- └── Report System
-```
-
-A execução ocorre na seguinte ordem:
-
-```text
-Pipeline.run()
-  └── NodeRunner.run()
-        ├── validateInputs
-        ├── onPreRun
-        ├── onRun
-        ├── onPostRun
-        └── validateOutputs
-```
-
-Cada etapa pode:
-
-* Executar normalmente
-* Falhar
-* Solicitar retry
-* Continuar após erro
-* Pular etapa
-* Abortar o pipeline
+- ETL: extrair, transformar e carregar dados.
+- Integrações com APIs externas.
+- Processamento de arquivos em lote.
+- Validação e enriquecimento de payloads.
+- Rotinas que precisam de retry, logs e relatórios.
 
 ---
 
-# Conceitos Principais
+## Conceitos principais
 
-## Pipeline
+### Pipeline
 
-A classe principal coordena toda execução do fluxo. 
+`Pipeline` coordena a execução dos nodes. Ele cria o contexto compartilhado, registra os middlewares padrão e executa cada node na ordem em que foi adicionado com `push()`.
 
-Ela é responsável por:
+### Node
 
-* Registrar nodes
-* Inicializar middlewares
-* Criar contexto
-* Executar nodes em sequência
-* Produzir o relatório final
+`Node` representa uma unidade de processamento. Cada node pode implementar três etapas:
 
-Exemplo:
+- `onPreRun(ctx)`: preparação antes da execução principal.
+- `onRun(ctx)`: execução principal. Esta etapa é obrigatória.
+- `onPostRun(ctx)`: finalização depois da execução principal.
+
+Cada etapa também possui um handler de erro opcional:
+
+- `onPreRunErr(ctx)`
+- `onRunErr(ctx)`
+- `onPostRunErr(ctx)`
+
+Por padrão, qualquer erro aborta o pipeline.
+
+### Context
+
+`Context` é a memória compartilhada entre os nodes. Ele permite escrever e ler valores com chaves nomeadas:
 
 ```python
-from pipeline import pipeline
-
-result = (
-  pipeline.Pipeline(logger)
-  .push(Extract())
-  .push(Upload())
-  .run()
-)
+ctx.set("orders", orders)
+orders = ctx.get("orders")
 ```
+
+O contexto também rastreia quais chaves foram lidas e escritas durante a execução de cada node. Esse rastreamento alimenta a validação automática de inputs e outputs.
+
+### Contratos de inputs e outputs
+
+Cada node pode declarar as chaves que espera ler e as chaves que promete escrever:
+
+```python
+class NormalizeOrders(Node):
+  inputs = ("raw_orders",)
+  outputs = ("orders",)
+```
+
+Durante a execução, o middleware de validação verifica:
+
+- Input declarado que não existe no contexto.
+- Output declarado que não foi escrito.
+- Input lido sem declaração.
+- Output escrito sem declaração.
+
+### Decisões de erro
+
+Os handlers de erro retornam uma decisão usando `ErrorContext`:
+
+| Decisão | Método | Efeito |
+| --- | --- | --- |
+| Abortar | `ctx.abort()` | Interrompe o pipeline. |
+| Continuar | `ctx.continue_()` | Marca a falha como tratada e segue para a próxima etapa. |
+| Tentar novamente | `ctx.retry(max_retries=3)` | Reexecuta a etapa até o limite definido. |
+| Pular | `ctx.skip()` | Ignora a etapa atual e continua. |
 
 ---
 
-## Node
+## Caso de uso: processamento de pedidos
 
-Nodes representam unidades isoladas de processamento. 
+Imagine uma rotina que precisa:
 
-Cada node possui 3 etapas opcionais:
+1. Extrair pedidos recebidos de uma fonte externa.
+2. Normalizar os campos para um formato interno.
+3. Enviar os pedidos para um serviço de faturamento.
+4. Gerar um relatório em JSON e HTML com o resultado da execução.
 
-```python
-onPreRun()
-onRun()
-onPostRun()
-```
-
-E handlers de erro independentes:
+### Exemplo completo
 
 ```python
-onPreRunErr()
-onRunErr()
-onPostRunErr()
-```
+from venera import Context, ErrorContext, Node, Pipeline, Logger, saveHTML, saveJson
+from venera.error import ErrorDecision
 
-Exemplo:
 
-```python
-class Upload(node.Node):
-  inputs = ("text",)
+class TemporaryBillingError(Exception):
+  pass
 
-  def onRun(self, ctx):
-    print(ctx.get("text"))
-```
 
----
+class ExtractOrders(Node):
+  outputs = ("raw_orders",)
 
-# Context
+  def onRun(self, ctx: Context) -> None:
+    ctx.set(
+      "raw_orders",
+      [
+        {"id": "A-100", "amount": "149.90", "customer": "Maria"},
+        {"id": "A-101", "amount": "89.50", "customer": "João"},
+      ],
+    )
 
-O `Context` é o armazenamento compartilhado entre os nodes. 
 
-Ele funciona como uma memória transitória do pipeline.
+class NormalizeOrders(Node):
+  inputs = ("raw_orders",)
+  outputs = ("orders",)
 
-## Escrita
+  def onRun(self, ctx: Context) -> None:
+    raw_orders = ctx.get("raw_orders")
 
-```python
-ctx.set("text", {"message": "hello"})
-```
+    orders = [
+      {
+        "id": item["id"],
+        "amount": float(item["amount"]),
+        "customer_name": item["customer"],
+      }
+      for item in raw_orders
+    ]
 
-## Leitura
+    ctx.set("orders", orders)
 
-```python
-ctx.get("text")
-```
 
-## Verificação
+class SendToBilling(Node):
+  inputs = ("orders",)
+  outputs = ("billing_result",)
 
-```python
-ctx.has("text")
-```
+  def __init__(self):
+    super().__init__()
+    self.attempts = 0
 
-O contexto também rastreia:
+  def onRun(self, ctx: Context) -> None:
+    self.attempts += 1
 
-* Keys lidas
-* Keys escritas
+    if self.attempts == 1:
+      raise TemporaryBillingError("serviço de faturamento temporariamente indisponível")
 
-Isso é usado pelo sistema de validação automática.
+    orders = ctx.get("orders")
+    ctx.set(
+      "billing_result",
+      {
+        "sent": len(orders),
+        "status": "accepted",
+      },
+    )
 
----
-
-# Contrato de Inputs e Outputs
-
-Cada node pode declarar:
-
-```python
-inputs = (...)
-outputs = (...)
-```
-
-Exemplo:
-
-```python
-class Extract(Node):
-  outputs = ("text",)
-```
-
-```python
-class Upload(Node):
-  inputs = ("text",)
-```
-
-O `ValidationMiddleware` valida automaticamente:
-
-* Inputs faltando
-* Outputs não produzidos
-* Inputs usados sem declaração
-* Outputs escritos sem declaração
-
-Isso cria um contrato explícito entre nodes.
-
----
-
-# Sistema de Tratamento de Erros
-
-Cada etapa possui um error handler dedicado.
-
-Exemplo real do projeto: 
-
-```python
-class Extract(node.Node):
-  def onRun(self, ctx):
-    raise ErrTeste("erro teste")
-
-  def onRunErr(self, ctx):
-    if ctx.is_(ErrTeste):
-      return ctx.continue_()
+  def onRunErr(self, ctx: ErrorContext) -> ErrorDecision:
+    if ctx.is_(TemporaryBillingError):
+      return ctx.retry(max_retries=2, reason="tentando reenviar para o faturamento")
 
     return ctx.abort()
-```
 
----
 
-# ErrorDecision
+log = Logger("examples.orders")
 
-O framework utiliza `ErrorDecision` para controlar o comportamento após falhas. 
-
-Ações disponíveis:
-
-| Ação       | Descrição           |
-| ---------- | ------------------- |
-| `abort`    | Interrompe pipeline |
-| `retry`    | Reexecuta etapa     |
-| `continue` | Continua execução   |
-| `skip`     | Ignora etapa        |
-
-Exemplos:
-
-```python
-return ctx.abort()
-```
-
-```python
-return ctx.retry(max_retries=3)
-```
-
-```python
-return ctx.continue_()
-```
-
----
-
-# Retry Automático
-
-O `DecisionEngine` executa retries automaticamente. 
-
-Fluxo:
-
-```text
-Erro
- └── ErrorHandler
-       └── retry(3)
-             └── tenta novamente
-```
-
-Cada tentativa gera rastreabilidade completa no report.
-
----
-
-# Middleware System
-
-O framework possui um sistema de middlewares baseado em eventos. 
-
-Eventos disponíveis:
-
-```python
-beforeRunPipeline
-afterRunPipeline
-
-beforeRunNode
-afterRunNode
-
-beforeRunStep
-afterRunStep
-
-onStepError
-
-validateInputs
-validateOutputs
-
-beforeRetry
-afterRetry
-onRetryError
-```
-
----
-
-## MiddlewareEngine
-
-Responsável por:
-
-* Registrar listeners
-* Emitir eventos
-* Executar transformações
-* Encadear middlewares
-
-
-
----
-
-# Middlewares Nativos
-
-O pipeline já inicia com middlewares padrão.
-
-## LoggerMiddleware
-
-Responsável pelos logs de execução. 
-
-Exemplo:
-
-```text
-[pipeline] started
-[node] started
-[step] success
-```
-
----
-
-## ValidationMiddleware
-
-Valida contratos de entrada e saída. 
-
----
-
-## ErrorReportMiddleware
-
-Gera relatórios detalhados de erro. 
-
-Inclui:
-
-* Tipo do erro
-* Mensagem
-* Traceback
-* Cause chain
-
----
-
-## ReportTraceMiddleware
-
-Adiciona rastreabilidade temporal. 
-
-Captura:
-
-* started_at
-* ended_at
-* duration_ms
-
-Para:
-
-* Pipeline
-* Node
-* Step
-* Retry
-
----
-
-# Sistema de Reports
-
-Toda execução gera um `PipelineReport`. 
-
-Estrutura:
-
-```text
-PipelineReport
- └── NodeReport
-       └── StepReport
-             └── RetryReport
-```
-
----
-
-# Exportação
-
-## JSON
-
-```python
-save.saveJson("report", result.to_dict())
-```
-
-
-
----
-
-## HTML
-
-```python
-save.saveHTML("index", result.to_html())
-```
-
-
-
-O HTML é gerado pelo renderer do módulo `pipeline.report.html`. 
-
----
-
-# Sistema HTML/UI
-
-O framework possui um mini sistema de renderização HTML interno.
-
-Componentes principais:
-
-| Componente | Responsabilidade        |
-| ---------- | ----------------------- |
-| `Tag`      | Renderização HTML       |
-| `HTMLPage` | Factory de tags         |
-| `UIBase`   | Componentes básicos     |
-| `UI`       | Componentes estilizados |
-| `Theme`    | Sistema de temas        |
-
----
-
-## Exemplo
-
-```python
-ui.card(
-  ui.heading("Pipeline Report"),
-  ui.metric("Nodes", 10),
-)
-```
-
----
-
-# Logger
-
-O logger do SDK grava:
-
-* Console
-* Arquivos `.log`
-
-
-
-Formato:
-
-```text
-[module:LEVEL] [reference] message
-```
-
----
-
-# Exemplo Completo
-
-## Node de extração
-
-```python
-class Extract(node.Node):
-  outputs = ("text",)
-
-  def onRun(self, ctx):
-    ctx.set("text", {"message": "hello"})
-```
-
----
-
-## Node de upload
-
-```python
-class Upload(node.Node):
-  inputs = ("text",)
-
-  def onRun(self, ctx):
-    print(ctx.get("text"))
-```
-
----
-
-## Execução
-
-```python
-result = (
-  pipeline.Pipeline(logger)
-  .push(Extract())
-  .push(Upload())
+report = (
+  Pipeline(log)
+  .push(ExtractOrders())
+  .push(NormalizeOrders())
+  .push(SendToBilling())
   .run()
 )
+
+saveJson("orders-report", report.to_dict())
+saveHTML("orders-report.html", report.to_html())
 ```
 
----
+### O que acontece neste fluxo
 
-# Benefícios do Framework
-
-## Observabilidade
-
-* Logs estruturados
-* HTML reports
-* JSON reports
-* Tracebacks completos
-
----
-
-## Segurança de Contrato
-
-* Inputs declarados
-* Outputs declarados
-* Validação automática
+1. `ExtractOrders` escreve `raw_orders` no contexto.
+2. `NormalizeOrders` lê `raw_orders`, converte `amount` para `float` e escreve `orders`.
+3. `SendToBilling` tenta enviar os pedidos para o faturamento.
+4. Na primeira tentativa, `SendToBilling` lança `TemporaryBillingError`.
+5. `onRunErr()` reconhece o erro temporário e retorna `ctx.retry(max_retries=2)`.
+6. O framework executa novamente a etapa `onRun()` do node.
+7. Na segunda tentativa, o envio é bem-sucedido e `billing_result` é gravado no contexto.
+8. O pipeline retorna um `PipelineReport` com status, nodes executados, retries e detalhes de erro tratados.
 
 ---
 
-## Resiliência
+## Exemplo de falha por contrato inválido
 
-* Retry automático
-* Continue on error
-* Abort controlado
+Se um node declarar um input que ainda não existe no contexto, o pipeline falha antes de executar `onRun()` desse node:
 
----
+```python
+class SendEmail(Node):
+  inputs = ("customer_email",)
 
-## Extensibilidade
+  def onRun(self, ctx: Context) -> None:
+    email = ctx.get("customer_email")
+    print(f"enviando e-mail para {email}")
 
-* Middleware customizado
-* Renderização HTML customizada
-* Sistema de temas
-* Error handlers específicos
 
----
+report = Pipeline(Logger("examples.invalid-contract")).push(SendEmail()).run()
 
-# Casos de Uso
+assert report.success is False
+assert report.failed_node.missing_inputs == ["customer_email"]
+```
 
-O framework é adequado para:
-
-* ETL
-* Data pipelines
-* Integrações
-* Processamento em etapas
-* Workflows de automação
-* Orquestração de tarefas
-* Batch jobs
-* Sistemas de importação/exportação
+Esse comportamento ajuda a detectar integrações incompletas entre nodes antes que efeitos colaterais sejam executados.
 
 ---
 
-# Exemplo de Estrutura de Projeto
+## Boas práticas
 
-```text
-app/
- ├── extract.py
- ├── transform.py
- ├── upload.py
- └── main.py
+- Declare sempre `inputs` e `outputs` para manter o contrato entre nodes explícito.
+- Mantenha nodes pequenos e focados em uma única responsabilidade.
+- Use `onPreRun()` para validações locais ou preparação de recursos.
+- Use `onPostRun()` para limpeza, métricas ou pós-processamento.
+- Use `ctx.retry()` apenas para erros temporários e idempotentes.
+- Use `ctx.continue_()` somente quando a falha for esperada e não comprometer o restante do fluxo.
+- Persistir `report.to_dict()` e `report.to_html()` facilita auditoria e troubleshooting.
+
+---
+
+## Estrutura mínima recomendada
+
+```python
+from venera import Context, Node, Pipeline, Logger
+
+
+class FirstStep(Node):
+  outputs = ("value",)
+
+  def onRun(self, ctx: Context) -> None:
+    ctx.set("value", 10)
+
+
+class SecondStep(Node):
+  inputs = ("value",)
+  outputs = ("result",)
+
+  def onRun(self, ctx: Context) -> None:
+    ctx.set("result", ctx.get("value") * 2)
+
+
+report = (
+  Pipeline(Logger("examples.minimal"))
+  .push(FirstStep())
+  .push(SecondStep())
+  .run()
+)
+
+print(report.success)
+print(report.to_dict())
 ```
