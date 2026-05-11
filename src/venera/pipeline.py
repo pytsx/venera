@@ -3,7 +3,7 @@ from typing import Self
 
 from .context import Context
 from .node import Node
-from .report import PipelineErrorReport, PipelineNodeReport, PipelineReport, PipelineRetryReport, PipelineStepReport
+from .report import PipelineNodeReport, PipelineReport
 
 from .middleware import middleware
 from .middleware import (
@@ -36,9 +36,12 @@ class Pipeline:
     )
 
     self.registry = NodeRegistry(self.middleware)
-    self.decisions = DecisionEngine(self.middleware)
-    self.steps = StepRunner(self.middleware, self.decisions)
-    self.nodes = NodeRunner(self.middleware, self.steps)
+    self.nodes = NodeRunner(
+      self.middleware, 
+      StepRunner(self.middleware, 
+        DecisionEngine(self.middleware)
+      )
+    )
 
   def push(self, n: Node) -> Self:
     self.registry.push(n)
