@@ -1,5 +1,5 @@
 [project]
-name = "pipefy"
+name = "venera"
 dynamic = ["version"]
 description = "A lightweight pipeline framework with validation, middleware, logging and reports."
 readme = "README.md"
