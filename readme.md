@@ -87,6 +87,8 @@ Imagine uma rotina que precisa:
 4. Gerar um relatório em JSON e HTML com o resultado da execução.
 
 ### Exemplo completo
+
+```python
 from tchau import Pipeline, Node
 from tchau.sdk import Logger, saveHTML
 
@@ -121,3 +123,4 @@ if __name__ == "__main__":
   )
 
   saveHTML("index.html", report.to_html())
+```
