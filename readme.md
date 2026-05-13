@@ -27,15 +27,7 @@ pip install thcau
 
 ```python
 from tchau import Pipeline, Node
-
-
-class Logger:
-    def info(self, *args):
-        print("[INFO]", *args)
-
-    def error(self, *args):
-        print("[ERROR]", *args)
-
+from tchau.sdk import Logger
 
 class LoadUser(Node):
     outputs = ("user",)
@@ -54,7 +46,7 @@ class SayBye(Node):
 
 
 report = (
-    Pipeline(Logger())
+    Pipeline(Logger(__package__ or __name__))
     .push(LoadUser())
     .push(SayBye())
     .run()
@@ -74,7 +66,7 @@ A `Pipeline` é o fluxo principal de execução.
 Ela recebe um logger, aceita nós e escopos, executa cada etapa em ordem e retorna um relatório ao final.
 
 ```python
-pipeline = Pipeline(Logger())
+pipeline = Pipeline(Logger(...))
 
 pipeline.push(LoadUser())
 pipeline.push(SayBye())
@@ -86,7 +78,7 @@ Também é possível encadear chamadas:
 
 ```python
 report = (
-    Pipeline(Logger())
+    Pipeline(Logger(...))
     .push(LoadUser())
     .push(SayBye())
     .run()
@@ -286,7 +278,7 @@ def runErr(self, err):
 
 ```python
 from tchau import Pipeline, Node
-
+from tchau.sdk import Logger
 
 class SometimesFails(Node):
     outputs = ("ok",)
@@ -308,7 +300,7 @@ class SometimesFails(Node):
 
 
 report = (
-    Pipeline(Logger())
+    Pipeline(Logger(__package__ or __name__))
     .push(SometimesFails())
     .run()
 )
@@ -326,7 +318,7 @@ Isso é útil para organizar fluxos maiores.
 
 ```python
 report = (
-    Pipeline(Logger())
+    Pipeline(Logger(...))
     .scope(
         "prepare",
         LoadUser(),
@@ -339,7 +331,7 @@ report = (
 Scopes também podem receber middlewares próprios.
 
 ```python
-pipeline = Pipeline(Logger())
+pipeline = Pipeline(Logger(...))
 
 pipeline.scope(
     "group",
@@ -390,7 +382,7 @@ Uso:
 
 ```python
 report = (
-    Pipeline(Logger(), AuditMiddleware())
+    Pipeline(Logger(...), AuditMiddleware())
     .push(LoadUser())
     .push(SayBye())
     .run()
@@ -444,6 +436,7 @@ O relatório pode conter informações como:
 
 ```python
 from tchau import Pipeline, Node
+from tchau.sdk import Logger
 
 class LoadOrder(Node):
     outputs = ("order",)
@@ -488,7 +481,7 @@ class BuildMessage(Node):
 
 
 pipeline = (
-    Pipeline(Logger())
+    Pipeline(Logger(__package__ or __name__))
     .push(LoadOrder())
     .push(ValidateOrder())
     .push(BuildMessage())
@@ -581,7 +574,7 @@ Tchau pode ser usado para organizar:
 Cria uma pipeline.
 
 ```python
-pipeline = Pipeline(Logger())
+pipeline = Pipeline(Logger(...))
 ```
 
 ### `pipeline.push(executable)`
