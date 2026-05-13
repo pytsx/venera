@@ -26,7 +26,8 @@ class Logger:
       return
 
     formatter = logging.Formatter(
-      "[%(name)s:%(levelname)s] %(message)s"
+      "[%(asctime)s.%(msecs)03d] [%(name)s:%(levelname)s] %(message)s",
+      datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
