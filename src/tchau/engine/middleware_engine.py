@@ -9,7 +9,7 @@ class MiddlewareEngine:
     listeners = {}
 
     for mw in middlewares:
-      for event in mw.events:
+      for event in mw.events():
         listeners.setdefault(event, []).append(mw)
 
     return listeners

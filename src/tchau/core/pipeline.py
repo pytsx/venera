@@ -64,24 +64,23 @@ class Pipeline(Scope):
 
   def run(self) -> PipelineReport:
     ctx = Context(self.log)
-
     pipeline_report = PipelineReport(
       nodes_total=self._count_nodes(),
     )
-
-    frame = ExecutionFrame(self.middlewares)
-    middleware = frame.engine()
-    middleware.emit("beforeRunPipeline", ctx, pipeline_report)
-
+    root_frame = ExecutionFrame([])
+    engine = ExecutionFrame(self.middlewares).engine()
+    engine.emit("beforeRunPipeline", ctx, pipeline_report)
     try:
-      for executable in self.children:
-        if not self.executable_runner.run(ctx, frame, executable, pipeline_report):
-          pipeline_report.success = False
-          break
-
+      ok = self.scope_runner.run(
+        ctx,
+        root_frame,
+        self,
+        pipeline_report
+      )
+      if not ok:
+        pipeline_report.success = False
     finally:
-      middleware.emit("afterRunPipeline", ctx, pipeline_report)
-
+      engine.emit("afterRunPipeline", ctx, pipeline_report)
     return pipeline_report
 
   def _count_nodes(self) -> int:

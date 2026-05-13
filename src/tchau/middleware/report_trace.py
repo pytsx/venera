@@ -5,17 +5,6 @@ from ..core.middleware import Middleware
 from ..sdk import getReference
 
 class ReportTraceMiddleware(Middleware):
-  events = (
-    "beforeRunPipeline",
-    "afterRunPipeline",
-    "beforeRunNode",
-    "afterRunNode",
-    "beforeRunStep",
-    "afterRunStep",
-    "beforeRetry",
-    "afterRetry",
-    "onRetryError",
-  )
 
   def __init__(self):
     self.pipeline_start: float | None = None

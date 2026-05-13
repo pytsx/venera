@@ -32,15 +32,18 @@ class ScopeRunner:
   ) -> bool:
     if self.executables is None:
       raise RuntimeError("ScopeRunner is not bound to ExecutableRunner")
-    
+
     scope_frame = frame.child(scope.middlewares)
     middleware = scope_frame.engine()
 
-    middleware.emit("beforeRunScope", ctx, report, scope)
+    ok = True
 
     try:
+      middleware.emit("beforeRunScope", ctx, report, scope)
+
       for child in scope.children:
         if not self.executables.run(ctx, scope_frame, child, report):
+          ok = False
           return False
 
       return True

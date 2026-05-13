@@ -1,12 +1,6 @@
 from ..core.middleware import Middleware
 
 class ValidationMiddleware(Middleware):
-  events = (
-    "beforeRunNode",
-    "validateInputs",
-    "validateOutputs",
-  )
-    
   def beforeRunNode(self, ctx, r, n):
     ctx.begin_tracking()
 

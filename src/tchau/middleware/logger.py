@@ -2,19 +2,7 @@ from ..sdk import getReference
 from ..core.middleware import Middleware
 
 class LoggerMiddleware(Middleware):
-  events = (
-    "beforeRunPipeline",
-    "afterRunPipeline",
-    "beforeRunNode",
-    "afterRunNode",
-    "beforeRunStep",
-    "afterRunStep",
-    "onStepError",
-    "beforeRetry",
-    "afterRetry",
-    "onRetryError",
-  )
-    
+   
   def beforeRunPipeline(self, ctx, r):
     ctx.log.info("pipeline", "started")
 

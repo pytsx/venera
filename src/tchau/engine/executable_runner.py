@@ -11,12 +11,12 @@ from ..report.model import PipelineNodeReport, PipelineReport
 
 from .execution_frame import ExecutionFrame
 from .node_runner import NodeRunner
-from .execution_frame import ExecutionFrame
 
 class ScopeRunnerProtocol:
   def run(
     self,
     ctx: Context,
+    frane: ExecutionFrame,
     scope: Scope,
     report: PipelineReport,
   ) -> bool:

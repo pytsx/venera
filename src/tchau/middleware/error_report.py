@@ -4,10 +4,7 @@ from ..core.middleware import Middleware
 import traceback 
 
 class ErrorReportMiddleware(Middleware):
-  events = (
-    "onStepError",
-    "onRetryError",
-  )
+
   def build_error_report(self, err: Exception) -> PipelineErrorReport:
     cause = err.__cause__ or err.__context__
 
