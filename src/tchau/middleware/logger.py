@@ -1,5 +1,5 @@
 from ..sdk import getReference
-from .middleware import Middleware
+from ..core.middleware import Middleware
 
 class LoggerMiddleware(Middleware):
   events = (

@@ -1,14 +1,10 @@
-# Venera: documentação e caso de uso
-
-`venera` é um framework leve para construir pipelines em Python com etapas desacopladas, validação de contratos, tratamento de erros, middlewares, logs e relatórios de execução.
+`tchau` é um framework leve para construir pipelines em Python com etapas desacopladas, validação de contratos, tratamento de erros, middlewares, logs e relatórios de execução.
 
 Esta documentação descreve os principais conceitos do pacote e apresenta um caso de uso completo de processamento de pedidos.
 
 ---
 
-## Quando usar
-
-Use `venera` quando você precisa organizar um fluxo em etapas sequenciais e rastreáveis, por exemplo:
+Use `tchau` quando você precisa organizar um fluxo em etapas sequenciais e rastreáveis, por exemplo:
 
 - ETL: extrair, transformar e carregar dados.
 - Integrações com APIs externas.
@@ -91,168 +87,37 @@ Imagine uma rotina que precisa:
 4. Gerar um relatório em JSON e HTML com o resultado da execução.
 
 ### Exemplo completo
+from tchau import Pipeline, Node
+from tchau.sdk import Logger, saveHTML
 
-```python
-from venera import Context, ErrorContext, Node, Pipeline, Logger, saveHTML, saveJson
-from venera.error import ErrorDecision
+class AskMessage(Node):
+  outputs = ("message",)
+  def run(self, ctx) -> None:
+    ctx.set("message", input())
 
+class UppercaseMessage(Node):
+  inputs = ("message",)
+  outputs = ("upper_message",)
 
-class TemporaryBillingError(Exception):
-  pass
-
-
-class ExtractOrders(Node):
-  outputs = ("raw_orders",)
-
-  def onRun(self, ctx: Context) -> None:
-    ctx.set(
-      "raw_orders",
-      [
-        {"id": "A-100", "amount": "149.90", "customer": "Maria"},
-        {"id": "A-101", "amount": "89.50", "customer": "João"},
-      ],
-    )
+  def run(self, ctx) -> None:
+    message = ctx.get("message")
+    ctx.set("upper_message", message.upper())
 
 
-class NormalizeOrders(Node):
-  inputs = ("raw_orders",)
-  outputs = ("orders",)
+class PrintMessage(Node):
+  inputs = ("upper_message",)
 
-  def onRun(self, ctx: Context) -> None:
-    raw_orders = ctx.get("raw_orders")
-
-    orders = [
-      {
-        "id": item["id"],
-        "amount": float(item["amount"]),
-        "customer_name": item["customer"],
-      }
-      for item in raw_orders
-    ]
-
-    ctx.set("orders", orders)
+  def run(self, ctx) -> None:
+    print(ctx.get("upper_message"))
 
 
-class SendToBilling(Node):
-  inputs = ("orders",)
-  outputs = ("billing_result",)
+if __name__ == "__main__":
+  report = (
+    Pipeline(Logger(__name__))
+    .push(AskMessage())
+    .UppercaseMessage()
+    .PrintMessage()
+    .run()
+  )
 
-  def __init__(self):
-    super().__init__()
-    self.attempts = 0
-
-  def onRun(self, ctx: Context) -> None:
-    self.attempts += 1
-
-    if self.attempts == 1:
-      raise TemporaryBillingError("serviço de faturamento temporariamente indisponível")
-
-    orders = ctx.get("orders")
-    ctx.set(
-      "billing_result",
-      {
-        "sent": len(orders),
-        "status": "accepted",
-      },
-    )
-
-  def onRunErr(self, ctx: ErrorContext) -> ErrorDecision:
-    if ctx.is_(TemporaryBillingError):
-      return ctx.retry(max_retries=2, reason="tentando reenviar para o faturamento")
-
-    return ctx.abort()
-
-
-log = Logger("examples.orders")
-
-report = (
-  Pipeline(log)
-  .push(ExtractOrders())
-  .push(NormalizeOrders())
-  .push(SendToBilling())
-  .run()
-)
-
-saveJson("orders-report", report.to_dict())
-saveHTML("orders-report.html", report.to_html())
-```
-
-### O que acontece neste fluxo
-
-1. `ExtractOrders` escreve `raw_orders` no contexto.
-2. `NormalizeOrders` lê `raw_orders`, converte `amount` para `float` e escreve `orders`.
-3. `SendToBilling` tenta enviar os pedidos para o faturamento.
-4. Na primeira tentativa, `SendToBilling` lança `TemporaryBillingError`.
-5. `onRunErr()` reconhece o erro temporário e retorna `ctx.retry(max_retries=2)`.
-6. O framework executa novamente a etapa `onRun()` do node.
-7. Na segunda tentativa, o envio é bem-sucedido e `billing_result` é gravado no contexto.
-8. O pipeline retorna um `PipelineReport` com status, nodes executados, retries e detalhes de erro tratados.
-
----
-
-## Exemplo de falha por contrato inválido
-
-Se um node declarar um input que ainda não existe no contexto, o pipeline falha antes de executar `onRun()` desse node:
-
-```python
-class SendEmail(Node):
-  inputs = ("customer_email",)
-
-  def onRun(self, ctx: Context) -> None:
-    email = ctx.get("customer_email")
-    print(f"enviando e-mail para {email}")
-
-
-report = Pipeline(Logger("examples.invalid-contract")).push(SendEmail()).run()
-
-assert report.success is False
-assert report.failed_node.missing_inputs == ["customer_email"]
-```
-
-Esse comportamento ajuda a detectar integrações incompletas entre nodes antes que efeitos colaterais sejam executados.
-
----
-
-## Boas práticas
-
-- Declare sempre `inputs` e `outputs` para manter o contrato entre nodes explícito.
-- Mantenha nodes pequenos e focados em uma única responsabilidade.
-- Use `onPreRun()` para validações locais ou preparação de recursos.
-- Use `onPostRun()` para limpeza, métricas ou pós-processamento.
-- Use `ctx.retry()` apenas para erros temporários e idempotentes.
-- Use `ctx.continue_()` somente quando a falha for esperada e não comprometer o restante do fluxo.
-- Persistir `report.to_dict()` e `report.to_html()` facilita auditoria e troubleshooting.
-
----
-
-## Estrutura mínima recomendada
-
-```python
-from venera import Context, Node, Pipeline, Logger
-
-
-class FirstStep(Node):
-  outputs = ("value",)
-
-  def onRun(self, ctx: Context) -> None:
-    ctx.set("value", 10)
-
-
-class SecondStep(Node):
-  inputs = ("value",)
-  outputs = ("result",)
-
-  def onRun(self, ctx: Context) -> None:
-    ctx.set("result", ctx.get("value") * 2)
-
-
-report = (
-  Pipeline(Logger("examples.minimal"))
-  .push(FirstStep())
-  .push(SecondStep())
-  .run()
-)
-
-print(report.success)
-print(report.to_dict())
-```
+  saveHTML("index.html", report.to_html())

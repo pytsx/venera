@@ -1,4 +1,4 @@
-from .middleware import Middleware
+from ..core.middleware import Middleware
 
 class ValidationMiddleware(Middleware):
   events = (

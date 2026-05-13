@@ -1,9 +1,9 @@
 from abc import ABC
 from typing import Callable, Literal
 
-from ..context import Context
-from ..node import Node
-from ..report import  PipelineNodeReport, PipelineReport, PipelineRetryReport, PipelineStepReport
+from .context import Context
+from .node import Node
+from ..report.model import  PipelineNodeReport, PipelineReport, PipelineRetryReport, PipelineStepReport
 
 MiddlewareEvent = Literal[
   "onPush",

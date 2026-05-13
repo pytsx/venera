@@ -1,7 +1,7 @@
 from datetime import datetime
 from time import perf_counter
 
-from .middleware import Middleware
+from ..core.middleware import Middleware
 from ..sdk import getReference
 
 class ReportTraceMiddleware(Middleware):

@@ -1,4 +1,4 @@
-from ..middleware.middleware import Middleware, MiddlewareEvent
+from ..core.middleware import Middleware, MiddlewareEvent
 
 class MiddlewareEngine:
   def __init__(self, *mw: Middleware):

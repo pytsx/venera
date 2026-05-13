@@ -1,6 +1,6 @@
-from ..report import PipelineErrorReport
+from ..report.model import PipelineErrorReport
 from ..sdk import getReference
-from .middleware import Middleware
+from ..core.middleware import Middleware
 import traceback 
 
 class ErrorReportMiddleware(Middleware):

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, asdict
 
-from .sdk.html.ui import UI, HTMLPage
-from .sdk.html.themes.default import default_theme
+from ..sdk.html.ui import UI, HTMLPage
+from ..sdk.html.themes.default import default_theme
 
 @dataclass
 class PipelineErrorReport:
