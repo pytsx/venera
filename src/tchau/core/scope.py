@@ -1,5 +1,12 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .executable import Executable 
-from ..middleware import Middleware
+
+if TYPE_CHECKING:
+  from .middleware import Middleware
+
 
 class Scope(Executable):
   def __init__(
