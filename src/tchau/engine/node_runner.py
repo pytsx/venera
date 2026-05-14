@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, get_origin
+from typing import Any, get_args, get_origin
 
 from ..core.context import Context
 from ..core.node import InternalNode, Node
@@ -28,17 +28,8 @@ class NodeRunner:
     engine.emit("beforeRunNode", ctx, node_report, current_node)
 
     _node = InternalNode(current_node)
-    prev_keys = set(ctx.data.keys())
 
     try:
-      if _node.has_source():
-        source = current_node.source
-
-        if source is None or not ctx.has_source(source):
-          node_report.success = False
-          ctx.log.info(current_node.id, f"missing source: {source.name if source else None}")
-          return RunResult(False)
-
       if not self._validate_input(ctx, current_node, node_report, payload):
         return RunResult(False)
 
@@ -50,7 +41,7 @@ class NodeRunner:
       ):
         return RunResult(False)
 
-      output: Any = None
+      output: Any = payload
       close_ok = True
 
       try:
@@ -61,6 +52,7 @@ class NodeRunner:
             lambda: current_node.before(ctx),
             current_node.beforeErr,
             node_report,
+            previous_payload=payload,
           )
 
           if not before.success:
@@ -72,6 +64,7 @@ class NodeRunner:
           lambda: current_node.run(ctx, payload),
           current_node.runErr,
           node_report,
+          previous_payload=payload,
         )
 
         if not run.success:
@@ -89,6 +82,7 @@ class NodeRunner:
             lambda: current_node.after(ctx),
             current_node.afterErr,
             node_report,
+            previous_payload=output,
           )
 
           if not after.success:
@@ -102,6 +96,7 @@ class NodeRunner:
             lambda: current_node.close(ctx),
             current_node.closeErr,
             node_report,
+            previous_payload=output,
           )
 
           close_ok = close.success
@@ -114,7 +109,7 @@ class NodeRunner:
         ctx,
         current_node,
         node_report,
-        prev_keys,
+        set(ctx.data.keys()),
       ):
         return RunResult(False)
 
@@ -172,6 +167,20 @@ class NodeRunner:
       return isinstance(value, expected)
 
     origin = get_origin(expected)
+
+    if origin is list:
+      if not isinstance(value, list):
+        return False
+
+      args = get_args(expected)
+
+      if not args:
+        return True
+
+      return all(isinstance(item, args[0]) for item in value)
+
+    if origin is dict:
+      return isinstance(value, dict)
 
     if isinstance(origin, type):
       return isinstance(value, origin)
