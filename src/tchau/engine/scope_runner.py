@@ -46,9 +46,18 @@ class ScopeRunner:
 
     try:
       for source in scope.sources:
-        resource = source.open(ctx)
-        ctx.register_source(source.key, resource)
-        opened.append((source, resource))
+        try:
+          resource = source.open(ctx)
+          ctx.register_source(source.key, resource)
+          opened.append((source, resource))
+
+        except Exception as err:
+          ctx.log.error(
+            source.key.name,
+            "source open failed",
+            err,
+          )
+          return RunResult(False)
 
       for child in scope.children:
         result = self.executables.run(
