@@ -42,6 +42,7 @@ class DecisionEngine:
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
+    previous_payload: Any = None,
   ) -> RunResult[T]:
     step_report.decision = decision.action
     step_report.decision_reason = decision.reason
@@ -63,7 +64,14 @@ class DecisionEngine:
       self.finish_step(step_report, node_report, False, False)
       return RunResult(False)
 
-    return handler(ctx, action, decision, step_report, node_report)
+    return handler(
+      ctx,
+      action,
+      decision,
+      step_report,
+      node_report,
+      previous_payload,
+    )
 
   def _continue(
     self,
@@ -72,9 +80,10 @@ class DecisionEngine:
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
+    previous_payload: Any,
   ) -> RunResult[T]:
     self.finish_step(step_report, node_report, True, True)
-    return RunResult(True)
+    return RunResult(True, previous_payload)
 
   def _skip(
     self,
@@ -83,9 +92,10 @@ class DecisionEngine:
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
+    previous_payload: Any,
   ) -> RunResult[T]:
     self.finish_step(step_report, node_report, True, False)
-    return RunResult(True)
+    return RunResult(True, previous_payload)
 
   def _abort(
     self,
@@ -94,6 +104,7 @@ class DecisionEngine:
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
+    previous_payload: Any,
   ) -> RunResult[T]:
     self.finish_step(step_report, node_report, False, False)
     return RunResult(False)
@@ -105,8 +116,9 @@ class DecisionEngine:
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
+    previous_payload: Any,
   ) -> RunResult[T]:
-    max_retries = decision.max_retries or 1
+    max_retries = max(decision.max_retries, 1)
 
     for attempt in range(1, max_retries + 1):
       retry_report = PipelineRetryReport(

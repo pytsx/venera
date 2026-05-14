@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, Any
 
 from ..core.context import Context, ErrorContext
 from ..core.error import ErrorDecision
@@ -30,6 +30,7 @@ class StepRunner:
     action: Callable[[], T],
     error_handler: Callable[[ErrorContext], ErrorDecision],
     node_report: PipelineNodeReport,
+    previous_payload: Any = None,
   ) -> RunResult[T]:
     step_report = PipelineStepReport(
       name=name,
@@ -90,6 +91,7 @@ class StepRunner:
         decision=decision,
         step_report=step_report,
         node_report=node_report,
+        previous_payload=previous_payload,
       )
 
       self.middleware.emit("afterRunStep", ctx, step_report, name, action)
