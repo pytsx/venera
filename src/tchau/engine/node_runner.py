@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, get_args, get_origin
 
 from ..core.context import Context
-from ..core.node import InternalNode, Node
+from ..core.node import Node
 from ..core.result import RunResult
 from ..report.model import PipelineNodeReport
 
@@ -24,10 +24,9 @@ class NodeRunner:
 
     engine = framer.engine()
     steps = StepRunner(engine, DecisionEngine(engine))
+    prev_keys = set(ctx.data.keys())
 
     engine.emit("beforeRunNode", ctx, node_report, current_node)
-
-    _node = InternalNode(current_node)
 
     try:
       if not self._validate_input(ctx, current_node, node_report, payload):
@@ -41,79 +40,37 @@ class NodeRunner:
       ):
         return RunResult(False)
 
-      output: Any = payload
-      close_ok = True
+      run = steps.run(
+        ctx,
+        "run",
+        lambda: current_node.run(ctx, payload),
+        current_node.on_error,
+        node_report,
+        previous_payload=payload,
+      )
 
-      try:
-        if _node.has_before():
-          before = steps.run(
-            ctx,
-            "before",
-            lambda: current_node.before(ctx),
-            current_node.beforeErr,
-            node_report,
-            previous_payload=payload,
-          )
+      if not run.success:
+        return RunResult(False)
 
-          if not before.success:
-            return RunResult(False)
+      output = run.payload
 
-        run = steps.run(
-          ctx,
-          "run",
-          lambda: current_node.run(ctx, payload),
-          current_node.runErr,
-          node_report,
-          previous_payload=payload,
-        )
-
-        if not run.success:
-          return RunResult(False)
-
-        output = run.payload
-
+      # Quando o node recupera de erro, ele não produziu uma saída real.
+      # O payload anterior é preservado e a validação do output declarado
+      # deste node é ignorada para não invalidar uma recuperação legítima.
+      if not run.recovered:
         if not self._validate_output(ctx, current_node, node_report, output):
           return RunResult(False)
-
-        if _node.has_after():
-          after = steps.run(
-            ctx,
-            "after",
-            lambda: current_node.after(ctx),
-            current_node.afterErr,
-            node_report,
-            previous_payload=output,
-          )
-
-          if not after.success:
-            return RunResult(False)
-
-      finally:
-        if _node.has_close():
-          close = steps.run(
-            ctx,
-            "close",
-            lambda: current_node.close(ctx),
-            current_node.closeErr,
-            node_report,
-            previous_payload=output,
-          )
-
-          close_ok = close.success
-
-      if not close_ok:
-        return RunResult(False)
 
       if not engine.every(
         "validateOutputs",
         ctx,
         current_node,
         node_report,
-        set(ctx.data.keys()),
+        prev_keys,
       ):
         return RunResult(False)
 
-      return RunResult(True, output)
+      return RunResult(True, output, recovered=run.recovered)
 
     finally:
       engine.emit("afterRunNode", ctx, node_report, current_node)
@@ -177,10 +134,24 @@ class NodeRunner:
       if not args:
         return True
 
-      return all(isinstance(item, args[0]) for item in value)
+      item_type = args[0]
+
+      if item_type is Any:
+        return True
+
+      if not isinstance(item_type, type):
+        return True
+
+      return all(isinstance(item, item_type) for item in value)
 
     if origin is dict:
       return isinstance(value, dict)
+
+    if origin is tuple:
+      return isinstance(value, tuple)
+
+    if origin is set:
+      return isinstance(value, set)
 
     if isinstance(origin, type):
       return isinstance(value, origin)

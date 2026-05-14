@@ -1,8 +1,9 @@
 from ..sdk import getReference
 from ..core.middleware import Middleware
 
+
 class LoggerMiddleware(Middleware):
-   
+
   def beforeRunPipeline(self, ctx, r):
     ctx.log.info("pipeline", "started")
 
@@ -32,4 +33,3 @@ class LoggerMiddleware(Middleware):
 
   def onRetryError(self, ctx, r, err, attempt, max_retries, action):
     ctx.log.error(getReference(action), f"retry {attempt}/{max_retries} failed:", err)
-

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, TypeVar, Any
+from typing import Any, Callable, TypeVar
 
 from ..core.context import Context, ErrorContext
 from ..core.error import ErrorDecision

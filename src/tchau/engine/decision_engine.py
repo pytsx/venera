@@ -48,8 +48,7 @@ class DecisionEngine:
     step_report.decision_reason = decision.reason
 
     handlers = {
-      "continue": self._continue,
-      "skip": self._skip,
+      "recover": self._recover,
       "abort": self._abort,
       "retry": self._retry,
     }
@@ -73,7 +72,7 @@ class DecisionEngine:
       previous_payload,
     )
 
-  def _continue(
+  def _recover(
     self,
     ctx: Context,
     action: Callable[[], T],
@@ -83,20 +82,8 @@ class DecisionEngine:
     previous_payload: Any,
   ) -> RunResult[T]:
     self.finish_step(step_report, node_report, True, True)
-    return RunResult(True, previous_payload)
-
-  def _skip(
-    self,
-    ctx: Context,
-    action: Callable[[], T],
-    decision: ErrorDecision,
-    step_report: PipelineStepReport,
-    node_report: PipelineNodeReport,
-    previous_payload: Any,
-  ) -> RunResult[T]:
-    self.finish_step(step_report, node_report, True, False)
-    return RunResult(True, previous_payload)
-
+    return RunResult(False)
+    
   def _abort(
     self,
     ctx: Context,
