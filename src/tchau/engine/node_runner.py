@@ -1,80 +1,114 @@
+from __future__ import annotations
+
+from typing import Any, get_origin
+
 from ..core.context import Context
-from ..core.node import Node, InternalNode
+from ..core.node import InternalNode, Node
+from ..core.result import RunResult
 from ..report.model import PipelineNodeReport
-from .step_runner import StepRunner
-from .execution_frame import ExecutionFrame
+
 from .decision_engine import DecisionEngine
+from .execution_frame import ExecutionFrame
+from .step_runner import StepRunner
+
 
 class NodeRunner:
   def run(
     self,
     ctx: Context,
     framer: ExecutionFrame,
-    current_node: Node,
+    current_node: Node[Any, Any],
     node_report: PipelineNodeReport,
-  ) -> bool:
+    payload: Any,
+  ) -> RunResult[Any]:
 
     engine = framer.engine()
     steps = StepRunner(engine, DecisionEngine(engine))
-    
+
     engine.emit("beforeRunNode", ctx, node_report, current_node)
 
     _node = InternalNode(current_node)
     prev_keys = set(ctx.data.keys())
 
     try:
+      if _node.has_source():
+        source = current_node.source
+
+        if source is None or not ctx.has_source(source):
+          node_report.success = False
+          ctx.log.info(current_node.id, f"missing source: {source.name if source else None}")
+          return RunResult(False)
+
+      if not self._validate_input(ctx, current_node, node_report, payload):
+        return RunResult(False)
+
       if not engine.every(
         "validateInputs",
         ctx,
         current_node,
         node_report,
       ):
-        return False
-      
-      ok = True 
-      close_ok = True 
+        return RunResult(False)
+
+      output: Any = None
+      close_ok = True
 
       try:
         if _node.has_before():
-          if not steps.run(
+          before = steps.run(
             ctx,
             "before",
-            current_node.before,
+            lambda: current_node.before(ctx),
             current_node.beforeErr,
             node_report,
-          ):
-            return False
+          )
 
-        ok = steps.run(
+          if not before.success:
+            return RunResult(False)
+
+        run = steps.run(
           ctx,
           "run",
-          current_node.run,
+          lambda: current_node.run(ctx, payload),
           current_node.runErr,
           node_report,
         )
-      
-        if ok and _node.has_after():
-          ok = steps.run(
+
+        if not run.success:
+          return RunResult(False)
+
+        output = run.payload
+
+        if not self._validate_output(ctx, current_node, node_report, output):
+          return RunResult(False)
+
+        if _node.has_after():
+          after = steps.run(
             ctx,
             "after",
-            current_node.after,
+            lambda: current_node.after(ctx),
             current_node.afterErr,
             node_report,
           )
 
+          if not after.success:
+            return RunResult(False)
+
       finally:
         if _node.has_close():
-          close_ok = steps.run(
+          close = steps.run(
             ctx,
             "close",
-            current_node.close,
+            lambda: current_node.close(ctx),
             current_node.closeErr,
             node_report,
-          ) 
+          )
 
-      if not ok or not close_ok:
-        return False
-         
+          close_ok = close.success
+
+      if not close_ok:
+        return RunResult(False)
+
       if not engine.every(
         "validateOutputs",
         ctx,
@@ -82,7 +116,73 @@ class NodeRunner:
         node_report,
         prev_keys,
       ):
-        return False
-      return True
+        return RunResult(False)
+
+      return RunResult(True, output)
+
     finally:
       engine.emit("afterRunNode", ctx, node_report, current_node)
+
+  def _validate_input(
+    self,
+    ctx: Context,
+    node: Node[Any, Any],
+    node_report: PipelineNodeReport,
+    value: Any,
+  ) -> bool:
+    expected = getattr(node, "__input_type__", Any)
+
+    if self._matches(expected, value):
+      return True
+
+    node_report.success = False
+    ctx.log.info(
+      node.id,
+      f"invalid input type: expected {self._type_name(expected)}, got {type(value).__name__}",
+    )
+    return False
+
+  def _validate_output(
+    self,
+    ctx: Context,
+    node: Node[Any, Any],
+    node_report: PipelineNodeReport,
+    value: Any,
+  ) -> bool:
+    expected = getattr(node, "__output_type__", Any)
+
+    if self._matches(expected, value):
+      return True
+
+    node_report.success = False
+    ctx.log.info(
+      node.id,
+      f"invalid output type: expected {self._type_name(expected)}, got {type(value).__name__}",
+    )
+    return False
+
+  def _matches(self, expected: Any, value: Any) -> bool:
+    if expected is Any:
+      return True
+
+    if expected is None or expected is type(None):
+      return value is None
+
+    if isinstance(expected, type):
+      return isinstance(value, expected)
+
+    origin = get_origin(expected)
+
+    if isinstance(origin, type):
+      return isinstance(value, origin)
+
+    return True
+
+  def _type_name(self, value: Any) -> str:
+    if value is Any:
+      return "Any"
+
+    if value is None or value is type(None):
+      return "None"
+
+    return getattr(value, "__name__", str(value))

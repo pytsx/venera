@@ -1,9 +1,13 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TypeVar
 
 from ..sdk import logger
 
 from .error import ErrorDecision
+from .source import SourceKey, SourceRegistry
 
+T = TypeVar("T")
 
 class Context:
   def __init__(self, log: logger.Logger):
@@ -12,6 +16,8 @@ class Context:
 
     self.read_keys: set[str] = set()
     self.written_keys: set[str] = set()
+
+    self.sources = SourceRegistry()
 
   def begin_tracking(self) -> None:
     self.read_keys = set()
@@ -31,6 +37,21 @@ class Context:
 
   def has(self, key: str) -> bool:
     return key in self.data
+
+  def source(self, key: SourceKey[T]) -> T:
+    return self.sources.get(key)
+
+  def has_source(self, key: SourceKey[Any]) -> bool:
+    return self.sources.has(key)
+
+  def register_source(self, key: SourceKey[T], resource: T) -> None:
+    self.sources.register(key, resource)
+
+  def push_source_scope(self) -> None:
+    self.sources.push()
+
+  def pop_source_scope(self) -> dict[str, object]:
+    return self.sources.pop()
 
 class ErrorContext:
   def __init__(self, ctx: Context, exc: Exception):
@@ -60,3 +81,9 @@ class ErrorContext:
   
   def is_(self, error_type: type[Exception]) -> bool:
     return isinstance(self.error, error_type)
+  
+  def source(self, key: SourceKey[T]) -> T:
+    return self._ctx.source(key)
+
+  def has_source(self, key: SourceKey[Any]) -> bool:
+    return self._ctx.has_source(key)

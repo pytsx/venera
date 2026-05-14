@@ -1,9 +1,19 @@
-from typing import Callable
+from __future__ import annotations
+
+from typing import Any, Callable, TypeVar
 
 from ..core.context import Context
 from ..core.error import ErrorDecision
-from ..report.model import PipelineStepReport, PipelineNodeReport, PipelineRetryReport
+from ..core.result import RunResult
+from ..report.model import (
+  PipelineNodeReport,
+  PipelineRetryReport,
+  PipelineStepReport,
+)
 from ..engine.middleware_engine import MiddlewareEngine
+
+T = TypeVar("T")
+
 
 class DecisionEngine:
   def __init__(self, middleware: MiddlewareEngine):
@@ -28,11 +38,11 @@ class DecisionEngine:
   def handle(
     self,
     ctx: Context,
-    action: Callable[[Context], None],
+    action: Callable[[], T],
     decision: ErrorDecision,
     step_report: PipelineStepReport,
     node_report: PipelineNodeReport,
-  ) -> bool:
+  ) -> RunResult[T]:
     step_report.decision = decision.action
     step_report.decision_reason = decision.reason
 
@@ -50,20 +60,52 @@ class DecisionEngine:
         step_report.decision_reason
         or f"Unknown error decision: {decision.action}"
       )
-      return self.finish_step(step_report, node_report, False, False)
+      self.finish_step(step_report, node_report, False, False)
+      return RunResult(False)
 
     return handler(ctx, action, decision, step_report, node_report)
 
-  def _continue(self, ctx, action, decision, step_report, node_report):
-    return self.finish_step(step_report, node_report, True, True)
+  def _continue(
+    self,
+    ctx: Context,
+    action: Callable[[], T],
+    decision: ErrorDecision,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
+  ) -> RunResult[T]:
+    self.finish_step(step_report, node_report, True, True)
+    return RunResult(True)
 
-  def _skip(self, ctx, action, decision, step_report, node_report):
-    return self.finish_step(step_report, node_report, True, False)
+  def _skip(
+    self,
+    ctx: Context,
+    action: Callable[[], T],
+    decision: ErrorDecision,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
+  ) -> RunResult[T]:
+    self.finish_step(step_report, node_report, True, False)
+    return RunResult(True)
 
-  def _abort(self, ctx, action, decision, step_report, node_report):
-    return self.finish_step(step_report, node_report, False, False)
+  def _abort(
+    self,
+    ctx: Context,
+    action: Callable[[], T],
+    decision: ErrorDecision,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
+  ) -> RunResult[T]:
+    self.finish_step(step_report, node_report, False, False)
+    return RunResult(False)
 
-  def _retry(self, ctx, action, decision, step_report, node_report):
+  def _retry(
+    self,
+    ctx: Context,
+    action: Callable[[], T],
+    decision: ErrorDecision,
+    step_report: PipelineStepReport,
+    node_report: PipelineNodeReport,
+  ) -> RunResult[T]:
     max_retries = decision.max_retries or 1
 
     for attempt in range(1, max_retries + 1):
@@ -82,7 +124,7 @@ class DecisionEngine:
       )
 
       try:
-        action(ctx)
+        value = action()
 
         retry_report.success = True
         step_report.retries.append(retry_report)
@@ -96,7 +138,8 @@ class DecisionEngine:
           action,
         )
 
-        return self.finish_step(step_report, node_report, True, True)
+        self.finish_step(step_report, node_report, True, True)
+        return RunResult(True, value)
 
       except Exception as retry_err:
         retry_report.success = False
@@ -113,4 +156,5 @@ class DecisionEngine:
 
         step_report.retries.append(retry_report)
 
-    return self.finish_step(step_report, node_report, False, False)
+    self.finish_step(step_report, node_report, False, False)
+    return RunResult(False)

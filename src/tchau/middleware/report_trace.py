@@ -1,11 +1,12 @@
 from datetime import datetime
 from time import perf_counter
+from typing import Any
 
 from ..core.middleware import Middleware
 from ..sdk import getReference
 
-class ReportTraceMiddleware(Middleware):
 
+class ReportTraceMiddleware(Middleware):
   def __init__(self):
     self.pipeline_start: float | None = None
     self.node_start: dict[int, float] = {}
@@ -14,6 +15,15 @@ class ReportTraceMiddleware(Middleware):
 
   def now_iso(self) -> str:
     return datetime.now().isoformat(timespec="seconds")
+
+  def type_name(self, value: Any) -> str:
+    if value is Any:
+      return "Any"
+
+    if value is None or value is type(None):
+      return "None"
+
+    return getattr(value, "__name__", str(value))
 
   def beforeRunPipeline(self, ctx, r):
     self.pipeline_start = perf_counter()
@@ -31,8 +41,15 @@ class ReportTraceMiddleware(Middleware):
   def beforeRunNode(self, ctx, r, n):
     self.node_start[id(r)] = perf_counter()
     r.started_at = self.now_iso()
-    r.inputs_declared = list(n.inputs)
-    r.outputs_declared = list(n.outputs)
+
+    r.inputs_declared = [
+      self.type_name(getattr(n, "__input_type__", Any))
+    ]
+
+    r.outputs_declared = [
+      self.type_name(getattr(n, "__output_type__", Any))
+    ]
+
     r.context_keys_before = sorted(ctx.data.keys())
 
   def afterRunNode(self, ctx, r, n):
@@ -67,4 +84,3 @@ class ReportTraceMiddleware(Middleware):
     start = self.retry_start.pop(id(r), None)
     if start is not None:
       r.duration_ms = round((perf_counter() - start) * 1000, 2)
-

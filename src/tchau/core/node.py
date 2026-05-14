@@ -5,9 +5,12 @@ from .error import ErrorDecision
 from .context import Context, ErrorContext
 from .executable import Executable
 
-class Node(Executable):
-  inputs: tuple[str, ...] = ()
-  outputs: tuple[str, ...] = ()
+from .source import SourceKey
+
+from typing import ClassVar, Any
+
+class Node[I, O](Executable[I, O]):
+  source: ClassVar[SourceKey[Any] | None] = None
 
   def __init__(self, id: str | None = None):
     super().__init__(id)
@@ -22,7 +25,7 @@ class Node(Executable):
     return ctx.abort()
 
   @abstractmethod
-  def run(self, ctx: Context) -> None:
+  def run(self, ctx: Context, value: I) -> O:
     pass
 
   def runErr(
@@ -61,3 +64,6 @@ class InternalNode:
   
   def has_close(self) -> bool:
     return type(self.node).close is not Node.close
+  
+  def has_source(self) -> bool:
+    return self.node.source is not None
